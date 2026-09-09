@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bulk Tags Plugin Configuration</title>
+</head>
+<body>
+    <div id="BulkTagsConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="header" class="header-title">
+            <h1 class="headerTitle">Bulk Tags Plugin Configuration</h1>
+        </div>
+
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="bulkTagsConfigForm">
+                    <div class="checkboxContainer">
+                        <label class="emby-checkbox-label">
+                            <input id="enableLoggingCheckbox" type="checkbox" is="emby-checkbox" />
+                            <span>Enable detailed logging</span>
+                        </label>
+                        <div class="fieldDescription">When enabled, the plugin will log detailed information about bulk tagging operations.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="maxBatchSizeInput">Maximum batch size (1-1000):</label>
+                        <input id="maxBatchSizeInput" type="number" is="emby-input" min="1" max="1000" value="100" />
+                        <div class="fieldDescription">The maximum number of items to process in a single batch operation.</div>
+                    </div>
+
+                    <button type="submit" is="emby-button" class="raised button-submit">
+                        <span>Save</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var bulkTagsConfigPage = {
+            pluginId: '3c5f8a9a-0f3e-4a6b-9b8b-2c1a7b1c4f10',
+
+            onPageShow: function() {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(this.pluginId).then(function(config) {
+                    document.getElementById('enableLoggingCheckbox').checked = config.EnableLogging || false;
+                    document.getElementById('maxBatchSizeInput').value = config.MaxBatchSize || 100;
+                    Dashboard.hideLoadingMsg();
+                });
+            },
+
+            saveConfiguration: function() {
+                var self = this;
+                ApiClient.getPluginConfiguration(this.pluginId).then(function(config) {
+                    config.EnableLogging = document.getElementById('enableLoggingCheckbox').checked;
+                    config.MaxBatchSize = parseInt(document.getElementById('maxBatchSizeInput').value) || 100;
+                    
+                    ApiClient.updatePluginConfiguration(self.pluginId, config).then(function() {
+                        Dashboard.processPluginConfigurationUpdateResult('Configuration saved successfully!');
+                    });
+                });
+            }
+        };
+
+        document.getElementById('bulkTagsConfigForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            bulkTagsConfigPage.saveConfiguration();
+            return false;
+        });
+
+        // Load configuration when page becomes visible
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                bulkTagsConfigPage.onPageShow();
+            });
+        } else {
+            bulkTagsConfigPage.onPageShow();
+        }
+    </script>
+</body>
+</html>

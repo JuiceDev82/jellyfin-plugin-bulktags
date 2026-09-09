@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0.0",
+  "guid": "3c5f8a9a-0f3e-4a6b-9b8b-2c1a7b1c4f10",
+  "category": "General",
+  "name": "Bulk Tags",
+  "description": "Add or remove tags from multiple items at once",
+  "overview": "Bulk tagging operations",
+  "owner": "Jellyfin Community",
+  "compatVersion": "12.0.0.0",
+  "targetAbi": "12.0.0.0",
+  "sourceUrl": "https://github.com",
+  "checkForUpdateUrl": "https://github.com"
+}

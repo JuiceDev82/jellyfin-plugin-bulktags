@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bulk Tags Configuration</title>
+</head>
+<body>
+    <div id="BulkTagsConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <h2>Bulk Tags Plugin Configuration</h2>
+                <p>This plugin allows you to add or remove tags from multiple items at once in your Jellyfin library.</p>
+
+                <form id="BulkTagsConfigForm">
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="EnableLogging" name="EnableLogging" type="checkbox" is="emby-checkbox" />
+                            <span>Enable detailed logging</span>
+                        </label>
+                        <div class="fieldDescription">When enabled, the plugin will log detailed information about bulk tagging operations.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="MaxBatchSize">Maximum batch size</label>
+                        <input id="MaxBatchSize" name="MaxBatchSize" type="number" is="emby-input" min="1" max="1000" value="100" />
+                        <div class="fieldDescription">Maximum number of items to process in a single batch operation (1-1000).</div>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="sectionTitleContainer">
+                    <h3>API Endpoints</h3>
+                </div>
+                <p>The plugin provides the following API endpoints for bulk operations:</p>
+                <ul>
+                    <li><code>POST /BulkTags/AddTags</code> - Add tags to multiple items</li>
+                    <li><code>POST /BulkTags/RemoveTags</code> - Remove tags from multiple items</li>
+                </ul>
+                <p>Request body format:</p>
+                <pre><code>{
+  "ItemIds": ["item-id-1", "item-id-2"],
+  "Tags": ["tag1", "tag2"]
+}</code></pre>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var BulkTagsConfig = {
+                pluginUniqueId: '3c5f8a9a-0f3e-4a6b-9b8b-2c1a7b1c4f10'
+            };
+
+            document.querySelector('#BulkTagsConfigPage')
+                .addEventListener('pageshow', function() {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(BulkTagsConfig.pluginUniqueId).then(function (config) {
+                        document.querySelector('#EnableLogging').checked = config.EnableLogging || false;
+                        document.querySelector('#MaxBatchSize').value = config.MaxBatchSize || 100;
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+            document.querySelector('#BulkTagsConfigForm')
+                .addEventListener('submit', function(e) {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(BulkTagsConfig.pluginUniqueId).then(function (config) {
+                    config.EnableLogging = document.querySelector('#EnableLogging').checked;
+                    config.MaxBatchSize = parseInt(document.querySelector('#MaxBatchSize').value) || 100;
+                    ApiClient.updatePluginConfiguration(BulkTagsConfig.pluginUniqueId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+
+                e.preventDefault();
+                return false;
+            });
+        </script>
+    </div>
+</body>
+</html>

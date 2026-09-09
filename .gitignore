@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.dll
+*.pdb
+
+# Runtime data written next to the plugin assembly
+bulk-tags-audit-log.json
+bulk-tags-search-history.json
+
+# IDE / tooling
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

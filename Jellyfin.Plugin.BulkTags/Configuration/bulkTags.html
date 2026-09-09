@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bulk Tags</title>
+    <style>
+        .bulkTagsPage .bulkTagsLayout {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            max-width: 1100px;
+        }
+
+        .bulkTagsPage .bulkTagsHero {
+            padding: 20px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(20, 118, 86, 0.28), rgba(16, 50, 82, 0.22));
+        }
+
+        .bulkTagsPage .bulkTagsCard {
+            padding: 16px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .bulkTagsPage .bulkTagsRow {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .bulkTagsPage .bulkTagsSearchRow {
+            flex-wrap: nowrap;
+        }
+
+        .bulkTagsPage .bulkTagsSearchField {
+            flex: 0 1 250px;
+            min-width: 180px;
+        }
+
+        .bulkTagsPage .bulkTagsSearchOperatorWrap {
+            flex: 0 0 110px;
+        }
+
+        .bulkTagsPage .bulkTagsSearchOperator {
+            width: 100%;
+            min-height: 40px;
+            border-radius: 10px;
+        }
+
+        .bulkTagsPage .bulkTagsToolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .bulkTagsPage .bulkTagsFilterGroup {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+            align-items: center;
+        }
+
+        .bulkTagsPage .bulkTagsFilterGrid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(240px, 1fr));
+            gap: 16px;
+            margin-top: 12px;
+        }
+
+        .bulkTagsPage .bulkTagsFilterCard {
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .bulkTagsPage .bulkTagsFilterTitle {
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .bulkTagsPage .bulkTagsButton {
+            appearance: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .bulkTagsPage .bulkTagsResultsWrap {
+            margin-top: 14px;
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .bulkTagsPage .bulkTagsSectionTitle {
+            margin: 18px 0 8px;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .bulkTagsPage .bulkTagsResultsTable {
+            width: 100%;
+            min-width: 860px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .bulkTagsPage .bulkTagsResultsTable th,
+        .bulkTagsPage .bulkTagsResultsTable td {
+            padding: 12px 14px;
+            vertical-align: top;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            text-align: left;
+        }
+
+        .bulkTagsPage .bulkTagsResultsTable th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #20262c;
+            color: #eef3f6;
+            font-size: 0.95em;
+            letter-spacing: 0.01em;
+        }
+
+        .bulkTagsPage .bulkTagsSortButton {
+            appearance: none;
+            background: transparent;
+            border: 0;
+            color: inherit;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+            padding: 0;
+        }
+
+        .bulkTagsPage .bulkTagsResultsTable tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .bulkTagsPage .bulkTagsResultsTable tbody tr td {
+            box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+        }
+
+        .bulkTagsPage .bulkTagsResultsTable tbody tr + tr td {
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .bulkTagsPage .bulkTagsRowCheckbox {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            accent-color: #1c8f72;
+            cursor: pointer;
+        }
+
+        .bulkTagsPage .bulkTagsTitleCell {
+            font-weight: 700;
+        }
+
+        .bulkTagsPage .bulkTagsTypeCell,
+        .bulkTagsPage .bulkTagsOverview,
+        .bulkTagsPage .bulkTagsHint {
+            opacity: 0.8;
+            font-size: 0.95em;
+        }
+
+        .bulkTagsPage .bulkTagsMetaLine {
+            margin-top: 6px;
+            font-size: 0.9em;
+            opacity: 0.78;
+        }
+
+        .bulkTagsPage .bulkTagsOverview {
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        .bulkTagsPage .bulkTagsTagsCell {
+            line-height: 1.45;
+            word-break: break-word;
+            display: block;
+            min-height: 2.2em;
+        }
+
+        .bulkTagsPage .bulkTagsSuggestedTags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .bulkTagsPage .bulkTagsSectionLinks {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .bulkTagsPage .bulkTagsSectionLink {
+            color: #c7efe6;
+            text-decoration: underline;
+            cursor: pointer;
+            background: transparent;
+            border: 0;
+            font: inherit;
+            padding: 0;
+        }
+
+        .bulkTagsPage .bulkTagsSuggestion {
+            border: 0;
+            border-radius: 999px;
+            padding: 6px 12px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.08);
+            color: inherit;
+        }
+
+        .bulkTagsPage .bulkTagsPrimaryButton {
+            background: #1c8f72;
+            color: #f7fbfa;
+            border: 1px solid #17745d;
+        }
+
+        .bulkTagsPage .bulkTagsSecondaryButton {
+            background: #8f98a1;
+            color: #1f252b;
+            border: 1px solid #727b84;
+            box-shadow: none;
+        }
+
+        .bulkTagsPage .bulkTagsSecondaryButton:hover,
+        .bulkTagsPage .bulkTagsSecondaryButton:focus {
+            background: #7f8891;
+            color: #12181d;
+        }
+
+        .bulkTagsPage .bulkTagsSummaryLine {
+            font-weight: 600;
+        }
+
+        .bulkTagsPage .bulkTagsMatch {
+            font-weight: 800 !important;
+            color: #201a00 !important;
+            background: #f2d24b;
+            padding: 0 2px;
+            border-radius: 4px;
+        }
+
+        .bulkTagsPage .bulkTagsAuditList {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .bulkTagsPage .bulkTagsAuditEntry {
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .bulkTagsPage .bulkTagsAuditDivider {
+            border: 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.28);
+            margin: 0 0 12px;
+        }
+
+        .bulkTagsPage .bulkTagsAuditTitle {
+            font-weight: 700;
+        }
+
+        .bulkTagsPage .bulkTagsAuditMeta {
+            margin-top: 6px;
+            font-size: 0.95em;
+            opacity: 0.82;
+            line-height: 1.45;
+        }
+
+        .bulkTagsPage .bulkTagsHistoryControls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: nowrap;
+            margin-top: 14px;
+        }
+
+        .bulkTagsPage .bulkTagsHistorySelectWrap {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .bulkTagsPage .bulkTagsHistorySelect {
+            width: 100%;
+            min-height: 42px;
+            border-radius: 10px;
+        }
+
+        .bulkTagsPage .bulkTagsHistoryClearButton {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="BulkTagsPage" data-role="page" class="page type-interior bulkTagsPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <div class="bulkTagsLayout">
+                    <div class="bulkTagsHero">
+                        <h2>Bulk Tags</h2>
+                        <p>Search by item name, overview text, or existing tags. Then select multiple results and apply one tag across all of them.</p>
+                    </div>
+
+                    <div id="bulkTagsHistorySection" class="bulkTagsCard" style="display: none;">
+                        <div>
+                            <div class="bulkTagsSummaryLine">Recent Searches</div>
+                            <div class="bulkTagsHint" id="bulkTagsHistoryStatus" style="margin-top: 6px;">Loading recent searches...</div>
+                        </div>
+
+                        <div id="bulkTagsHistoryControls" class="bulkTagsHistoryControls" style="display: none;">
+                            <div class="bulkTagsHistorySelectWrap">
+                                <label class="inputLabel inputLabelUnfocused" for="bulkTagsHistorySelect">Choose a recent search</label>
+                                <select id="bulkTagsHistorySelect" class="bulkTagsHistorySelect">
+                                    <option value="">No saved searches yet</option>
+                                </select>
+                            </div>
+                            <button id="bulkTagsClearHistoryButton" type="button" class="bulkTagsButton bulkTagsSecondaryButton bulkTagsHistoryClearButton">
+                                Clear Search History
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bulkTagsCard">
+                        <div class="bulkTagsRow bulkTagsSearchRow">
+                            <div class="inputContainer bulkTagsSearchField">
+                                <label class="inputLabel inputLabelUnfocused" for="bulkTagsSearch1">Search term 1</label>
+                                <input id="bulkTagsSearch1" type="text" is="emby-input" placeholder="First keyword..." />
+                            </div>
+                            <div class="inputContainer bulkTagsSearchOperatorWrap">
+                                <label class="inputLabel inputLabelUnfocused" for="bulkTagsSearchOperator">Match</label>
+                                <select id="bulkTagsSearchOperator" class="bulkTagsSearchOperator">
+                                    <option value="AND">AND</option>
+                                    <option value="OR">OR</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer bulkTagsSearchField">
+                                <label class="inputLabel inputLabelUnfocused" for="bulkTagsSearch2">Search term 2</label>
+                                <input id="bulkTagsSearch2" type="text" is="emby-input" placeholder="Second keyword..." />
+                            </div>
+                        </div>
+
+                        <div class="bulkTagsFilterGrid">
+                            <div class="bulkTagsFilterCard">
+                                <div class="bulkTagsFilterTitle">Media Types</div>
+                                <div class="bulkTagsFilterGroup">
+                                    <label class="emby-checkbox-label">
+                                        <input id="bulkTagsIncludeMovies" type="checkbox" is="emby-checkbox" checked />
+                                        <span>Movies</span>
+                                    </label>
+                                    <label class="emby-checkbox-label">
+                                        <input id="bulkTagsIncludeSeries" type="checkbox" is="emby-checkbox" checked />
+                                        <span>Series</span>
+                                    </label>
+                                    <label class="emby-checkbox-label">
+                                        <input id="bulkTagsIncludeEpisodes" type="checkbox" is="emby-checkbox" />
+                                        <span>Episodes</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="bulkTagsFilterCard">
+                                <div class="bulkTagsFilterTitle">What To Search</div>
+                                <div class="bulkTagsFilterGroup">
+                                    <label class="emby-checkbox-label">
+                                        <input id="bulkTagsFieldTitle" type="checkbox" is="emby-checkbox" checked />
+                                        <span>Title</span>
+                                    </label>
+                                    <label class="emby-checkbox-label">
+                                        <input id="bulkTagsFieldOverview" type="checkbox" is="emby-checkbox" checked />
+                                        <span>Overview</span>
+                                    </label>
+                                    <label class="emby-checkbox-label">
+                                        <input id="bulkTagsFieldTags" type="checkbox" is="emby-checkbox" checked />
+                                        <span>Tags</span>
+                                    </label>
+                                </div>
+
+                                <div class="bulkTagsRow" style="margin-top: 12px;">
+                                    <div class="inputContainer" style="flex: 1 1 100%;">
+                                        <label class="inputLabel inputLabelUnfocused" for="bulkTagsWithoutTag">Without tag</label>
+                                        <input id="bulkTagsWithoutTag" type="text" is="emby-input" placeholder="Optional tag to exclude..." />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bulkTagsToolbar" style="margin-top: 14px;">
+                            <button id="bulkTagsSearchButton" type="button" class="bulkTagsButton bulkTagsPrimaryButton">
+                                Search
+                            </button>
+                            <button id="bulkTagsClearButton" type="button" class="bulkTagsButton bulkTagsSecondaryButton">
+                                Clear
+                            </button>
+                        </div>
+
+                        <div id="bulkTagsResultsSection" style="display: none;">
+                            <div class="bulkTagsToolbar" style="margin-top: 14px;">
+                                <button id="bulkTagsSelectVisibleButton" type="button" class="bulkTagsButton bulkTagsSecondaryButton">
+                                    Select All Results
+                                </button>
+                                <button id="bulkTagsClearSelectionButton" type="button" class="bulkTagsButton bulkTagsSecondaryButton">
+                                    Clear Selection
+                                </button>
+                            </div>
+
+                            <div id="bulkTagsSearchStatus" class="fieldDescription" style="margin-top: 12px;">Search results will appear below.</div>
+                            <div id="bulkTagsSectionLinks" class="bulkTagsSectionLinks"></div>
+                            <div id="bulkTagsResults"></div>
+                            <div class="bulkTagsToolbar" style="margin-top: 14px;">
+                                <button id="bulkTagsSelectVisibleButtonBottom" type="button" class="bulkTagsButton bulkTagsSecondaryButton">
+                                    Select All Results
+                                </button>
+                                <button id="bulkTagsClearSelectionButtonBottom" type="button" class="bulkTagsButton bulkTagsSecondaryButton">
+                                    Clear Selection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="bulkTagsActionsSection" class="bulkTagsCard" style="display: none;">
+                        <div class="bulkTagsSummaryLine" id="bulkTagsSelectionSummary">0 items selected</div>
+                        <div class="bulkTagsHint" id="bulkTagsSelectionNames" style="margin-top: 8px;"></div>
+
+                        <div class="bulkTagsRow" style="margin-top: 14px;">
+                            <div class="inputContainer" style="flex: 1 1 320px;">
+                                <label class="inputLabel inputLabelUnfocused" for="bulkTagsTagInput">Tag name</label>
+                                <input id="bulkTagsTagInput" type="text" is="emby-input" placeholder="Enter a tag" />
+                            </div>
+                            <button id="bulkTagsAddButton" type="button" class="bulkTagsButton bulkTagsPrimaryButton">
+                                Bulk Add Tag
+                            </button>
+                            <button id="bulkTagsRemoveButton" type="button" class="bulkTagsButton bulkTagsSecondaryButton">
+                                Bulk Remove Tag
+                            </button>
+                            <button id="bulkTagsUnlockMetadataButton" type="button" class="bulkTagsButton bulkTagsSecondaryButton">
+                                Unlock Metadata
+                            </button>
+                            <button id="bulkTagsLockMetadataButton" type="button" class="bulkTagsButton bulkTagsSecondaryButton">
+                                Lock Metadata
+                            </button>
+                        </div>
+                        <div id="bulkTagsMetadataStatus" class="fieldDescription" style="margin-top: 12px;"></div>
+
+                        <div class="bulkTagsRow" style="margin-top: 10px;">
+                            <label class="emby-checkbox-label">
+                                <input id="bulkTagsRefreshAfterAction" type="checkbox" is="emby-checkbox" checked />
+                                <span>Refresh search results after add/remove</span>
+                            </label>
+                        </div>
+
+                        <div id="bulkTagsSuggestedTags" class="bulkTagsSuggestedTags"></div>
+                        <div id="bulkTagsActionStatus" class="fieldDescription" style="margin-top: 12px;"></div>
+                    </div>
+
+                    <div class="bulkTagsCard">
+                        <div class="bulkTagsRow" style="justify-content: space-between; align-items: center;">
+                            <div>
+                                <div class="bulkTagsSummaryLine">Recent Actions</div>
+                                <div class="bulkTagsHint" id="bulkTagsAuditStatus" style="margin-top: 6px;">Loading recent activity...</div>
+                            </div>
+                            <button id="bulkTagsClearAuditButton" type="button" class="bulkTagsButton bulkTagsSecondaryButton">
+                                Clear Audit Log
+                            </button>
+                        </div>
+
+                        <div id="bulkTagsAuditList" class="bulkTagsAuditList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            (function () {
+                var page = document.querySelector('#BulkTagsPage');
+                var searchInput1 = document.querySelector('#bulkTagsSearch1');
+                var searchOperator = document.querySelector('#bulkTagsSearchOperator');
+                var searchInput2 = document.querySelector('#bulkTagsSearch2');
+                var withoutTagInput = document.querySelector('#bulkTagsWithoutTag');
+                var searchButton = document.querySelector('#bulkTagsSearchButton');
+                var clearButton = document.querySelector('#bulkTagsClearButton');
+                var unlockMetadataButton = document.querySelector('#bulkTagsUnlockMetadataButton');
+                var lockMetadataButton = document.querySelector('#bulkTagsLockMetadataButton');
+                var metadataStatus = document.querySelector('#bulkTagsMetadataStatus');
+                var selectVisibleButton = document.querySelector('#bulkTagsSelectVisibleButton');
+                var selectVisibleButtonBottom = document.querySelector('#bulkTagsSelectVisibleButtonBottom');
+                var clearSelectionButton = document.querySelector('#bulkTagsClearSelectionButton');
+                var clearSelectionButtonBottom = document.querySelector('#bulkTagsClearSelectionButtonBottom');
+                var resultsSection = document.querySelector('#bulkTagsResultsSection');
+                var actionsSection = document.querySelector('#bulkTagsActionsSection');
+                var resultsContainer = document.querySelector('#bulkTagsResults');
+                var searchStatus = document.querySelector('#bulkTagsSearchStatus');
+                var sectionLinksContainer = document.querySelector('#bulkTagsSectionLinks');
+                var selectionSummary = document.querySelector('#bulkTagsSelectionSummary');
+                var selectionNames = document.querySelector('#bulkTagsSelectionNames');
+                var tagInput = document.querySelector('#bulkTagsTagInput');
+                var suggestedTagsContainer = document.querySelector('#bulkTagsSuggestedTags');
+                var addButton = document.querySelector('#bulkTagsAddButton');
+                var removeButton = document.querySelector('#bulkTagsRemoveButton');
+                var actionStatus = document.querySelector('#bulkTagsActionStatus');
+                var auditStatus = document.querySelector('#bulkTagsAuditStatus');
+                var auditList = document.querySelector('#bulkTagsAuditList');
+                var clearAuditButton = document.querySelector('#bulkTagsClearAuditButton');
+                var historySection = document.querySelector('#bulkTagsHistorySection');
+                var historyStatus = document.querySelector('#bulkTagsHistoryStatus');
+                var historyControls = document.querySelector('#bulkTagsHistoryControls');
+                var historySelect = document.querySelector('#bulkTagsHistorySelect');
+                var clearHistoryButton = document.querySelector('#bulkTagsClearHistoryButton');
+                var refreshAfterActionCheckbox = document.querySelector('#bulkTagsRefreshAfterAction');
+                var includeMoviesCheckbox = document.querySelector('#bulkTagsIncludeMovies');
+                var includeSeriesCheckbox = document.querySelector('#bulkTagsIncludeSeries');
+                var includeEpisodesCheckbox = document.querySelector('#bulkTagsIncludeEpisodes');
+                var fieldTitleCheckbox = document.querySelector('#bulkTagsFieldTitle');
+                var fieldOverviewCheckbox = document.querySelector('#bulkTagsFieldOverview');
+                var fieldTagsCheckbox = document.querySelector('#bulkTagsFieldTags');
+
+                var selectedItems = new Map();
+                var currentResults = [];
+                var currentMovies = [];
+                var currentSeries = [];
+                var currentEpisodes = [];
+                var sortState = {
+                    Movies: { key: 'dateAdded', direction: 'desc' },
+                    Shows: { key: 'dateAdded', direction: 'desc' },
+                    Episodes: { key: 'dateAdded', direction: 'desc' }
+                };
+
+                function authHeaders() {
+                    var headers = { 'Content-Type': 'application/json' };
+
+                    // Jellyfin 12 rejects the legacy X-Emby-Token header by default
+                    // (ServerConfiguration.EnableLegacyAuthorization is now false), so let
+                    // ApiClient build the standard 'Authorization: MediaBrowser ...' header.
+                    if (typeof ApiClient.setRequestHeaders === 'function') {
+                        ApiClient.setRequestHeaders(headers);
+                        return headers;
+                    }
+
+                    var token = typeof ApiClient.accessToken === 'function' ? ApiClient.accessToken() : null;
+                    if (token) {
+                        headers['Authorization'] = 'MediaBrowser Token="' + token + '"';
+                    }
+
+                    return headers;
+                }
+
+                function setActionStatus(message, isError) {
+                    actionStatus.textContent = message || '';
+                    actionStatus.style.color = isError ? '#ff6b6b' : '';
+                }
+
+                function setMetadataStatus(message, isError) {
+                    metadataStatus.textContent = message || '';
+                    metadataStatus.style.color = isError ? '#ff6b6b' : '';
+                }
+
+                function setAuditStatus(message, isError) {
+                    auditStatus.textContent = message || '';
+                    auditStatus.style.color = isError ? '#ff6b6b' : '';
+                }
+
+                function setHistoryStatus(message, isError) {
+                    historyStatus.textContent = message || '';
+                    historyStatus.style.color = isError ? '#ff6b6b' : '';
+                }
+
+                function escapeHtml(value) {
+                    return (value || '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                }
+
+                function trimOverview(text) {
+                    if (!text) {
+                        return '';
+                    }
+
+                    return text.length > 220 ? text.slice(0, 217) + '...' : text;
+                }
+
+                function formatDate(value) {
+                    if (!value) {
+                        return 'Unknown';
+                    }
+
+                    var date = new Date(value);
+                    if (isNaN(date.getTime())) {
+                        return 'Unknown';
+                    }
+
+                    return date.toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }
+
+                function escapeRegex(value) {
+                    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                }
+
+                function getIncludedTypes() {
+                    var types = [];
+                    if (includeMoviesCheckbox.checked) {
+                        types.push('Movie');
+                    }
+                    if (includeSeriesCheckbox.checked) {
+                        types.push('Series');
+                    }
+                    if (includeEpisodesCheckbox.checked) {
+                        types.push('Episode');
+                    }
+                    return types;
+                }
+
+                function getIncludedFields() {
+                    var fields = [];
+                    if (fieldTitleCheckbox.checked) {
+                        fields.push('Title');
+                    }
+                    if (fieldOverviewCheckbox.checked) {
+                        fields.push('Overview');
+                    }
+                    if (fieldTagsCheckbox.checked) {
+                        fields.push('Tags');
+                    }
+                    return fields;
+                }
+
+                function getSearchTerms() {
+                    return {
+                        first: (searchInput1.value || '').trim(),
+                        second: (searchInput2.value || '').trim(),
+                        operator: (searchOperator.value || 'AND').toUpperCase(),
+                        withoutTag: (withoutTagInput.value || '').trim()
+                    };
+                }
+
+                function getHighlightTerms() {
+                    var searchTerms = getSearchTerms();
+                    var terms = [searchTerms.first, searchTerms.second]
+                        .filter(function (term) { return !!term; })
+                        .filter(function (term, index, array) {
+                            return array.findIndex(function (candidate) {
+                                return candidate.toLowerCase() === term.toLowerCase();
+                            }) === index;
+                        })
+                        .sort(function (left, right) {
+                            return right.length - left.length;
+                        });
+
+                    return terms;
+                }
+
+                function highlightText(value, terms) {
+                    if (!value) {
+                        return '';
+                    }
+
+                    if (!terms.length) {
+                        return escapeHtml(value);
+                    }
+
+                    var pattern = new RegExp('(' + terms.map(escapeRegex).join('|') + ')', 'ig');
+                    return value
+                        .split(pattern)
+                        .map(function (part) {
+                            if (!part) {
+                                return '';
+                            }
+
+                            var isMatch = terms.some(function (term) {
+                                return part.toLowerCase() === term.toLowerCase();
+                            });
+
+                            var escaped = escapeHtml(part);
+                            return isMatch
+                                ? '<mark class="bulkTagsMatch" style="background:#f2d24b;color:#201a00;font-weight:800;padding:0 2px;border-radius:4px;">' + escaped + '</mark>'
+                                : escaped;
+                        })
+                        .join('');
+                }
+
+                function formatEpisodeContext(item) {
+                    var seriesName = item.SeriesName || '';
+                    if (!seriesName) {
+                        return '';
+                    }
+
+                    var parts = [seriesName];
+                    var seasonNumber = item.SeasonNumber;
+                    var episodeNumber = item.EpisodeNumber;
+                    var hasSeason = seasonNumber !== null && seasonNumber !== undefined && seasonNumber !== '';
+                    var hasEpisode = episodeNumber !== null && episodeNumber !== undefined && episodeNumber !== '';
+
+                    if (hasSeason || hasEpisode) {
+                        var seasonText = hasSeason ? String(seasonNumber).padStart(2, '0') : '00';
+                        var episodeText = hasEpisode ? String(episodeNumber).padStart(2, '0') : '00';
+                        parts.push('S' + seasonText + 'E' + episodeText);
+                    }
+
+                    return parts.join(' ');
+                }
+
+                function updateSelectionSummary() {
+                    var entries = Array.from(selectedItems.values());
+                    var count = entries.length;
+                    selectionSummary.textContent = count + (count === 1 ? ' item selected' : ' items selected');
+
+                    if (!count) {
+                        selectionNames.textContent = '';
+                        return;
+                    }
+
+                    selectionNames.textContent = entries.slice(0, 5).join(', ') + (count > 5 ? ' ...' : '');
+                }
+
+                function setResultsVisibility(visible) {
+                    resultsSection.style.display = visible ? '' : 'none';
+                    actionsSection.style.display = visible ? '' : 'none';
+                }
+
+                function renderSuggestedTags(tags) {
+                    var cleaned = (tags || []).filter(Boolean);
+                    if (!cleaned.length) {
+                        suggestedTagsContainer.innerHTML = '';
+                        return;
+                    }
+
+                    suggestedTagsContainer.innerHTML = cleaned.map(function (tag) {
+                        return '<button type="button" class="bulkTagsSuggestion" data-tag="' + escapeHtml(tag) + '">' + escapeHtml(tag) + '</button>';
+                    }).join('');
+                }
+
+                function setIncludedTypes(includeTypes) {
+                    includeTypes = Array.isArray(includeTypes) ? includeTypes : [];
+                    includeMoviesCheckbox.checked = includeTypes.indexOf('Movie') !== -1;
+                    includeSeriesCheckbox.checked = includeTypes.indexOf('Series') !== -1;
+                    includeEpisodesCheckbox.checked = includeTypes.indexOf('Episode') !== -1;
+                }
+
+                function setIncludedFields(includeFields) {
+                    if (!Array.isArray(includeFields) || !includeFields.length) {
+                        fieldTitleCheckbox.checked = true;
+                        fieldOverviewCheckbox.checked = true;
+                        fieldTagsCheckbox.checked = true;
+                        return;
+                    }
+
+                    fieldTitleCheckbox.checked = includeFields.indexOf('Title') !== -1;
+                    fieldOverviewCheckbox.checked = includeFields.indexOf('Overview') !== -1;
+                    fieldTagsCheckbox.checked = includeFields.indexOf('Tags') !== -1;
+                }
+
+                function formatHistorySummary(entry) {
+                    var first = (entry.SearchTerm1 || '').trim();
+                    var second = (entry.SearchTerm2 || '').trim();
+                    var operator = (entry.SearchOperator || 'AND').toUpperCase();
+                    var withoutTag = (entry.WithoutTag || '').trim();
+                    var parts = [];
+
+                    if (first) {
+                        parts.push(first);
+                    }
+
+                    if (second) {
+                        if (first) {
+                            parts.push(operator);
+                        }
+                        parts.push(second);
+                    }
+
+                    if (!parts.length) {
+                        parts.push('Recent items');
+                    }
+
+                    if (withoutTag) {
+                        parts.push('(without tag: ' + withoutTag + ')');
+                    }
+
+                    return parts.join(' ');
+                }
+
+                function renderSearchHistory(entries) {
+                    entries = Array.isArray(entries) ? entries : [];
+                    historySelect.__entries = entries;
+
+                    if (!entries.length) {
+                        historySection.style.display = 'none';
+                        historyControls.style.display = 'none';
+                        historySelect.innerHTML = '<option value="">No saved searches yet</option>';
+                        historySelect.value = '';
+                        setHistoryStatus('No saved searches yet.', false);
+                        return;
+                    }
+
+                    historySection.style.display = '';
+                    historyControls.style.display = '';
+                    setHistoryStatus(entries.length + ' recent search' + (entries.length === 1 ? '' : 'es') + ' saved.', false);
+                    historySelect.innerHTML = ['<option value="">Choose a recent search...</option>'].concat(entries.map(function (entry, index) {
+                        var includeTypes = Array.isArray(entry.IncludeTypes) && entry.IncludeTypes.length ? entry.IncludeTypes.join(', ') : 'All media types';
+                        return '<option value="' + index + '">' + escapeHtml(formatHistorySummary(entry) + ' • ' + includeTypes + ' • ' + formatAuditTimestamp(entry.TimestampUtc)) + '</option>';
+                    })).join('');
+                    historySelect.value = '';
+                }
+
+                async function loadSearchHistory() {
+                    try {
+                        var response = await fetch('/BulkTags/SearchHistory', {
+                            headers: authHeaders()
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to load search history.');
+                        }
+
+                        var payload = await response.json();
+                        renderSearchHistory(payload.Entries || []);
+                    } catch (error) {
+                        historySection.style.display = 'none';
+                        historyControls.style.display = 'none';
+                        historySelect.innerHTML = '<option value="">No saved searches yet</option>';
+                        historySelect.value = '';
+                        setHistoryStatus(error.message || 'Failed to load search history.', true);
+                    }
+                }
+
+                async function clearSearchHistory() {
+                    Dashboard.showLoadingMsg();
+                    try {
+                        var response = await fetch('/BulkTags/SearchHistory/Clear', {
+                            method: 'POST',
+                            headers: authHeaders()
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to clear search history.');
+                        }
+
+                        renderSearchHistory([]);
+                    } catch (error) {
+                        setHistoryStatus(error.message || 'Failed to clear search history.', true);
+                    } finally {
+                        Dashboard.hideLoadingMsg();
+                    }
+                }
+
+                function formatAuditTimestamp(value) {
+                    if (!value) {
+                        return 'Unknown time';
+                    }
+
+                    var date = new Date(value);
+                    if (isNaN(date.getTime())) {
+                        return value;
+                    }
+
+                    return date.toLocaleString();
+                }
+
+                function renderAuditLog(entries) {
+                    entries = Array.isArray(entries) ? entries : [];
+
+                    if (!entries.length) {
+                        auditList.innerHTML = '';
+                        setAuditStatus('No bulk tag actions recorded yet.', false);
+                        return;
+                    }
+
+                    setAuditStatus(entries.length + ' recent action' + (entries.length === 1 ? '' : 's') + ' shown.', false);
+                    auditList.innerHTML = entries.map(function (entry) {
+                        var actionKey = (entry.Action || '').toLowerCase();
+                        var actionLabel = actionKey === 'remove'
+                            ? 'Removed'
+                            : actionKey === 'lock-metadata'
+                                ? 'Locked metadata for'
+                                : actionKey === 'unlock-metadata'
+                                    ? 'Unlocked metadata for'
+                                    : 'Added';
+                        var tags = Array.isArray(entry.Tags) && entry.Tags.length ? entry.Tags.join(', ') : 'no tags';
+                        var itemTypes = Array.isArray(entry.ItemTypes) && entry.ItemTypes.length ? entry.ItemTypes.join(', ') : 'Unknown types';
+                        var names = Array.isArray(entry.ItemNames) && entry.ItemNames.length ? entry.ItemNames.join(', ') : 'No item names captured';
+                        var updatedItemCount = entry.UpdatedItemCount || 0;
+                        var titleText = actionKey === 'lock-metadata' || actionKey === 'unlock-metadata'
+                            ? actionLabel
+                            : actionLabel + ' tag "' + tags + '"';
+
+                        return [
+                            '<div class="bulkTagsAuditEntry">',
+                            '<hr class="bulkTagsAuditDivider" />',
+                            '<div class="bulkTagsAuditTitle">', escapeHtml(formatAuditTimestamp(entry.TimestampUtc)), ' • ',
+                            escapeHtml(titleText), '</div>',
+                            '<div class="bulkTagsAuditMeta">',
+                            escapeHtml(updatedItemCount + ' item' + (updatedItemCount === 1 ? '' : 's') + ' updated'),
+                            ' • ',
+                            escapeHtml(itemTypes),
+                            '</div>',
+                            '<div class="bulkTagsAuditMeta">', escapeHtml(names), '</div>',
+                            '</div>'
+                        ].join('');
+                    }).join('');
+                }
+
+                async function loadAuditLog() {
+                    try {
+                        var response = await fetch('/BulkTags/AuditLog', {
+                            headers: authHeaders()
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to load audit log.');
+                        }
+
+                        var payload = await response.json();
+                        renderAuditLog(payload.Entries || []);
+                    } catch (error) {
+                        auditList.innerHTML = '';
+                        setAuditStatus(error.message || 'Failed to load audit log.', true);
+                    }
+                }
+
+                async function clearAuditLog() {
+                    Dashboard.showLoadingMsg();
+                    try {
+                        var response = await fetch('/BulkTags/AuditLog/Clear', {
+                            method: 'POST',
+                            headers: authHeaders()
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to clear audit log.');
+                        }
+
+                        renderAuditLog([]);
+                    } catch (error) {
+                        setAuditStatus(error.message || 'Failed to clear audit log.', true);
+                    } finally {
+                        Dashboard.hideLoadingMsg();
+                    }
+                }
+
+                function renderSectionLinks() {
+                    var links = [];
+                    if (currentMovies.length) {
+                        links.push('<button type="button" class="bulkTagsSectionLink" data-target-id="bulkTagsSectionMovies">Movies (' + currentMovies.length + ')</button>');
+                    }
+                    if (currentSeries.length) {
+                        links.push('<button type="button" class="bulkTagsSectionLink" data-target-id="bulkTagsSectionShows">Shows (' + currentSeries.length + ')</button>');
+                    }
+                    if (currentEpisodes.length) {
+                        links.push('<button type="button" class="bulkTagsSectionLink" data-target-id="bulkTagsSectionEpisodes">Episodes (' + currentEpisodes.length + ')</button>');
+                    }
+
+                    sectionLinksContainer.innerHTML = links.join('');
+                }
+
+                function getSortIndicator(tableTitle, key) {
+                    var state = sortState[tableTitle];
+                    if (!state || state.key !== key) {
+                        return '';
+                    }
+
+                    return state.direction === 'asc' ? ' ▲' : ' ▼';
+                }
+
+                function getSortedItems(tableTitle, items) {
+                    var state = sortState[tableTitle] || { key: 'dateAdded', direction: 'desc' };
+                    var direction = state.direction === 'asc' ? 1 : -1;
+                    var sorted = items.slice();
+
+                    sorted.sort(function (left, right) {
+                        var comparison = 0;
+
+                        switch (state.key) {
+                            case 'name':
+                                comparison = (left.Name || '').localeCompare(right.Name || '', undefined, { sensitivity: 'base' });
+                                break;
+                            case 'type':
+                                comparison = (left.Type || '').localeCompare(right.Type || '', undefined, { sensitivity: 'base' });
+                                break;
+                            case 'overview':
+                                comparison = (left.Overview || '').localeCompare(right.Overview || '', undefined, { sensitivity: 'base' });
+                                break;
+                            case 'tags':
+                                comparison = (left.Tags || []).join(', ').localeCompare((right.Tags || []).join(', '), undefined, { sensitivity: 'base' });
+                                break;
+                            case 'collections':
+                                comparison = (left.Collections || []).join(', ').localeCompare((right.Collections || []).join(', '), undefined, { sensitivity: 'base' });
+                                break;
+                            case 'dateAdded':
+                                comparison = (left.DateAddedTicks || 0) - (right.DateAddedTicks || 0);
+                                break;
+                        }
+
+                        if (comparison === 0) {
+                            comparison = (left.Name || '').localeCompare(right.Name || '', undefined, { sensitivity: 'base' });
+                        }
+
+                        return comparison * direction;
+                    });
+
+                    return sorted;
+                }
+
+                function renderTable(title, items, options) {
+                    if (!items.length) {
+                        return '';
+                    }
+
+                    options = options || {};
+                    var highlightTerms = getHighlightTerms();
+                    var sortedItems = getSortedItems(title, items);
+                    var sectionId = title === 'Movies'
+                        ? 'bulkTagsSectionMovies'
+                        : title === 'Shows'
+                            ? 'bulkTagsSectionShows'
+                            : 'bulkTagsSectionEpisodes';
+
+                    return [
+                        '<div id="', sectionId, '" class="bulkTagsSectionTitle">', escapeHtml(title), ' (', items.length, ')</div>',
+                        '<div class="bulkTagsResultsWrap">',
+                        '<table class="bulkTagsResultsTable">',
+                        '<thead>',
+                        '<tr>',
+                        '<th style="width: 56px;">Select</th>',
+                        '<th style="width: 18%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="name">Name', getSortIndicator(title, 'name'), '</button></th>',
+                        '<th style="width: 11%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="type">Type', getSortIndicator(title, 'type'), '</button></th>',
+                        '<th style="width: 13%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="dateAdded">Date Added', getSortIndicator(title, 'dateAdded'), '</button></th>',
+                        '<th style="width: 26%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="overview">Overview', getSortIndicator(title, 'overview'), '</button></th>',
+                        '<th style="width: 14%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="tags">Tags', getSortIndicator(title, 'tags'), '</button></th>',
+                        '<th style="width: 18%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="collections">Collections', getSortIndicator(title, 'collections'), '</button></th>',
+                        '</tr>',
+                        '</thead>',
+                        '<tbody>',
+                        sortedItems.map(function (item) {
+                            var checked = selectedItems.has(item.Id) ? 'checked' : '';
+                            var tags = item.Tags && item.Tags.length ? item.Tags : [];
+                            var collections = item.Collections && item.Collections.length ? item.Collections : [];
+                            var type = item.Type || 'Item';
+                            var overview = trimOverview(item.Overview || '');
+                            var episodeContext = options.showSeriesName ? formatEpisodeContext(item) : '';
+
+                            return [
+                                '<tr>',
+                                '<td><input class="bulkTagsItemCheckbox bulkTagsRowCheckbox" type="checkbox" data-id="', escapeHtml(item.Id), '" data-name="', escapeHtml(item.Name || ''), '" ', checked, ' /></td>',
+                                '<td><div class="bulkTagsTitleCell">', highlightText(item.Name || 'Untitled', highlightTerms), '</div>',
+                                episodeContext ? '<div class="bulkTagsMetaLine">' + highlightText(episodeContext, highlightTerms) + '</div>' : '',
+                                '</td>',
+                                '<td><div class="bulkTagsTypeCell">', escapeHtml(type), '</div></td>',
+                                '<td><div class="bulkTagsTypeCell">', escapeHtml(formatDate(item.DateAddedUtc)), '</div></td>',
+                                '<td>', overview ? '<div class="bulkTagsOverview">' + highlightText(overview, highlightTerms) + '</div>' : '<span class="bulkTagsHint">No overview</span>', '</td>',
+                                '<td><div class="bulkTagsTagsCell">',
+                                tags.length ? highlightText(tags.join(', '), highlightTerms) : '<span class="bulkTagsHint">No tags</span>',
+                                '</div></td>',
+                                '<td><div class="bulkTagsTagsCell">',
+                                collections.length ? highlightText(collections.join(', '), highlightTerms) : '<span class="bulkTagsHint">No collections</span>',
+                                '</div></td>',
+                                '</tr>'
+                            ].join('');
+                        }).join(''),
+                        '</tbody>',
+                        '</table>',
+                        '</div>'
+                    ].join('');
+                }
+
+                function renderResults(payload) {
+                    currentMovies = payload && payload.Movies ? payload.Movies : [];
+                    currentSeries = payload && payload.Series ? payload.Series : [];
+                    currentEpisodes = payload && payload.Episodes ? payload.Episodes : [];
+                    currentResults = currentMovies.concat(currentSeries, currentEpisodes);
+
+                    if (!currentResults.length) {
+                        resultsContainer.innerHTML = '';
+                        sectionLinksContainer.innerHTML = '';
+                        searchStatus.textContent = 'No matching items found.';
+                        setResultsVisibility(false);
+                        return;
+                    }
+
+                    setResultsVisibility(true);
+                    renderSectionLinks();
+                    searchStatus.textContent = payload && payload.StatusMessage
+                        ? payload.StatusMessage
+                        : currentResults.length + ' result(s) found in the selected categories.';
+                    resultsContainer.innerHTML = renderTable('Movies', currentMovies)
+                        + renderTable('Shows', currentSeries)
+                        + renderTable('Episodes', currentEpisodes, { showSeriesName: true });
+                }
+
+                async function searchItems() {
+                    var searchTerms = getSearchTerms();
+                    var hasSearchTerms = !!(searchTerms.first || searchTerms.second);
+                    var includedTypes = getIncludedTypes();
+                    if (!includedTypes.length) {
+                        resultsContainer.innerHTML = '';
+                        setResultsVisibility(false);
+                        setActionStatus('Select at least one media type first.', true);
+                        return;
+                    }
+
+                    var includedFields = getIncludedFields();
+                    if (hasSearchTerms && !includedFields.length) {
+                        resultsContainer.innerHTML = '';
+                        setResultsVisibility(false);
+                        setActionStatus('Select at least one search field first.', true);
+                        return;
+                    }
+
+                    Dashboard.showLoadingMsg();
+                    setActionStatus('');
+                    setMetadataStatus('');
+
+                    try {
+                        var params = new URLSearchParams({
+                            searchTerm1: searchTerms.first,
+                            searchTerm2: searchTerms.second,
+                            searchOperator: searchTerms.operator,
+                            withoutTag: searchTerms.withoutTag,
+                            includeCollections: 'true',
+                            includeTypes: includedTypes.join(','),
+                            includeFields: hasSearchTerms ? includedFields.join(',') : '',
+                            limit: '100'
+                        });
+
+                        var response = await fetch('/BulkTags/Search?' + params.toString(), {
+                            headers: authHeaders()
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Search failed with status ' + response.status);
+                        }
+
+                        var payload = await response.json();
+                        renderResults(payload);
+                        renderSuggestedTags(payload.SuggestedTags || []);
+                        await loadSearchHistory();
+                        if (payload.ErrorMessage) {
+                            searchStatus.textContent = payload.ErrorMessage;
+                        }
+                    } catch (error) {
+                        currentResults = [];
+                        resultsContainer.innerHTML = '';
+                        renderSuggestedTags([]);
+                        setResultsVisibility(false);
+                        setActionStatus(error.message || 'Search failed.', true);
+                    } finally {
+                        Dashboard.hideLoadingMsg();
+                    }
+                }
+
+                async function runBulkAction(action) {
+                    var tag = (tagInput.value || '').trim();
+                    if (!selectedItems.size) {
+                        setActionStatus('Select at least one item first.', true);
+                        return;
+                    }
+
+                    if (!tag) {
+                        setActionStatus('Enter a tag first.', true);
+                        return;
+                    }
+
+                    Dashboard.showLoadingMsg();
+                    setActionStatus('');
+
+                    try {
+                        var response = await fetch('/BulkTags/' + action, {
+                            method: 'POST',
+                            headers: authHeaders(),
+                            body: JSON.stringify({
+                                ItemIds: Array.from(selectedItems.keys()),
+                                Tags: [tag],
+                                RefreshSearchResults: refreshAfterActionCheckbox.checked
+                            })
+                        });
+
+                        if (!response.ok) {
+                            var message = await response.text();
+                            throw new Error(message || 'Bulk operation failed.');
+                        }
+
+                        setActionStatus(action === 'AddTags' ? 'Tag added to selected items.' : 'Tag removed from selected items.', false);
+                        await loadAuditLog();
+
+                        var searchTerms = getSearchTerms();
+                        if (refreshAfterActionCheckbox.checked && (searchTerms.first || searchTerms.second)) {
+                            await searchItems();
+                        }
+                    } catch (error) {
+                        setActionStatus(error.message || 'Bulk operation failed.', true);
+                    } finally {
+                        Dashboard.hideLoadingMsg();
+                    }
+                }
+
+                async function runMetadataLockAction(isLocked) {
+                    var includedTypes = getIncludedTypes();
+                    var selectedItemIds = Array.from(selectedItems.keys());
+
+                    if (!selectedItemIds.length && !includedTypes.length) {
+                        setMetadataStatus('Select at least one media type first.', true);
+                        return;
+                    }
+
+                    Dashboard.showLoadingMsg();
+                    setMetadataStatus('');
+
+                    try {
+                        var response = await fetch('/BulkTags/SetMetadataLock', {
+                            method: 'POST',
+                            headers: authHeaders(),
+                            body: JSON.stringify({
+                                ItemIds: selectedItemIds,
+                                IncludeTypes: includedTypes,
+                                IsLocked: isLocked
+                            })
+                        });
+
+                        if (!response.ok) {
+                            var message = await response.text();
+                            throw new Error(message || 'Metadata lock update failed.');
+                        }
+
+                        var payload = await response.json();
+                        setMetadataStatus(payload.Message || (isLocked ? 'Metadata locked.' : 'Metadata unlocked.'), false);
+                    } catch (error) {
+                        setMetadataStatus(error.message || 'Metadata lock update failed.', true);
+                    } finally {
+                        Dashboard.hideLoadingMsg();
+                    }
+                }
+
+                function setVisibleSelection(checked) {
+                    currentResults.forEach(function (item) {
+                        if (checked) {
+                            selectedItems.set(item.Id, item.Name || 'Untitled');
+                        } else {
+                            selectedItems.delete(item.Id);
+                        }
+                    });
+
+                    renderResults({
+                        Movies: currentMovies,
+                        Series: currentSeries,
+                        Episodes: currentEpisodes
+                    });
+                    updateSelectionSummary();
+                }
+
+                resultsContainer.addEventListener('change', function (event) {
+                    var target = event.target;
+                    if (!target.classList.contains('bulkTagsItemCheckbox')) {
+                        return;
+                    }
+
+                    var itemId = target.getAttribute('data-id');
+                    var itemName = target.getAttribute('data-name');
+                    if (target.checked) {
+                        selectedItems.set(itemId, itemName);
+                    } else {
+                        selectedItems.delete(itemId);
+                    }
+
+                    updateSelectionSummary();
+                });
+
+                resultsContainer.addEventListener('click', function (event) {
+                    var sortButton = event.target.closest('.bulkTagsSortButton');
+                    if (!sortButton) {
+                        return;
+                    }
+
+                    var tableTitle = sortButton.getAttribute('data-table');
+                    var sortKey = sortButton.getAttribute('data-sort-key');
+                    var state = sortState[tableTitle] || { key: 'dateAdded', direction: 'desc' };
+
+                    if (state.key === sortKey) {
+                        state.direction = state.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        state.key = sortKey;
+                        state.direction = sortKey === 'dateAdded' ? 'desc' : 'asc';
+                    }
+
+                    sortState[tableTitle] = state;
+                    renderResults({
+                        Movies: currentMovies,
+                        Series: currentSeries,
+                        Episodes: currentEpisodes,
+                        StatusMessage: searchStatus.textContent
+                    });
+                });
+
+                sectionLinksContainer.addEventListener('click', function (event) {
+                    var button = event.target.closest('.bulkTagsSectionLink');
+                    if (!button) {
+                        return;
+                    }
+
+                    var targetId = button.getAttribute('data-target-id');
+                    var target = targetId ? document.getElementById(targetId) : null;
+                    if (!target) {
+                        return;
+                    }
+
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+
+                function useSelectedHistoryEntry() {
+                    var index = parseInt(historySelect.value || '', 10);
+                    if (isNaN(index)) {
+                        return;
+                    }
+
+                    var entries = historySelect.__entries || [];
+                    var entry = entries[index];
+                    if (!entry) {
+                        return;
+                    }
+
+                    searchInput1.value = entry.SearchTerm1 || '';
+                    searchOperator.value = entry.SearchOperator || 'AND';
+                    searchInput2.value = entry.SearchTerm2 || '';
+                    withoutTagInput.value = entry.WithoutTag || '';
+                    setIncludedTypes(entry.IncludeTypes || []);
+                    setIncludedFields(entry.IncludeFields || []);
+                    searchItems();
+                }
+
+                suggestedTagsContainer.addEventListener('click', function (event) {
+                    var button = event.target.closest('.bulkTagsSuggestion');
+                    if (!button) {
+                        return;
+                    }
+
+                    tagInput.value = button.getAttribute('data-tag') || '';
+                    tagInput.focus();
+                });
+
+                searchButton.addEventListener('click', searchItems);
+                unlockMetadataButton.addEventListener('click', function () { runMetadataLockAction(false); });
+                lockMetadataButton.addEventListener('click', function () { runMetadataLockAction(true); });
+                clearButton.addEventListener('click', function () {
+                    searchInput1.value = '';
+                    searchInput2.value = '';
+                    searchOperator.value = 'AND';
+                    withoutTagInput.value = '';
+                    currentMovies = [];
+                    currentSeries = [];
+                    currentEpisodes = [];
+                    currentResults = [];
+                    resultsContainer.innerHTML = '';
+                    sectionLinksContainer.innerHTML = '';
+                    renderSuggestedTags([]);
+                    setActionStatus('');
+                    setMetadataStatus('');
+                    setResultsVisibility(false);
+                });
+                selectVisibleButton.addEventListener('click', function () { setVisibleSelection(true); });
+                selectVisibleButtonBottom.addEventListener('click', function () { setVisibleSelection(true); });
+                clearSelectionButton.addEventListener('click', function () {
+                    selectedItems.clear();
+                    updateSelectionSummary();
+                    renderResults({
+                        Movies: currentMovies,
+                        Series: currentSeries,
+                        Episodes: currentEpisodes
+                    });
+                });
+                clearSelectionButtonBottom.addEventListener('click', function () {
+                    selectedItems.clear();
+                    updateSelectionSummary();
+                    renderResults({
+                        Movies: currentMovies,
+                        Series: currentSeries,
+                        Episodes: currentEpisodes
+                    });
+                });
+                addButton.addEventListener('click', function () { runBulkAction('AddTags'); });
+                removeButton.addEventListener('click', function () { runBulkAction('RemoveTags'); });
+                clearAuditButton.addEventListener('click', clearAuditLog);
+                clearHistoryButton.addEventListener('click', clearSearchHistory);
+                historySelect.addEventListener('change', function () {
+                    if (historySelect.value) {
+                        useSelectedHistoryEntry();
+                    }
+                });
+                [searchInput1, searchInput2, withoutTagInput].forEach(function (input) {
+                    input.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            searchItems();
+                        }
+                    });
+                });
+
+                page.addEventListener('pageshow', function () {
+                    setResultsVisibility(currentResults.length > 0);
+                    updateSelectionSummary();
+                    setActionStatus('');
+                    setMetadataStatus('');
+                    loadAuditLog();
+                    loadSearchHistory();
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>
