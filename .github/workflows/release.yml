@@ -1,0 +1,189 @@
+name: Release
+
+# Push a tag and this builds the plugin, publishes the zip as a release asset
+# and rewrites the matching entry in the repository manifest. Doing those by
+# hand couples four things that have to agree -- version, zip, checksum and
+# sourceUrl -- and any mismatch fails the install on the user's server with an
+# unhelpful error, so they are derived here from one source instead.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and publish
+        required: true
+
+permissions:
+  contents: write
+
+# Two releases publishing at once would race on the manifest commit.
+concurrency:
+  group: release-manifest
+  cancel-in-progress: false
+
+env:
+  PLUGIN_GUID: 3c5f8a9a-0f3e-4a6b-9b8b-2c1a7b1c4f10
+  PROJECT: Jellyfin.Plugin.BulkTags/Jellyfin.Plugin.BulkTags.csproj
+  ASSEMBLY: Jellyfin.Plugin.BulkTags.dll
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve the tag
+        id: tag
+        run: echo "tag=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # The version and the ABI are already stated in the project file, so read
+      # them from there rather than keeping a second copy in this workflow.
+      # targetAbi is the minimum server version the build can load on, which is
+      # the Jellyfin package version it compiled against.
+      - name: Read version and target ABI from the project
+        id: meta
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, re, xml.etree.ElementTree as ET
+          root = ET.parse(os.environ["PROJECT"]).getroot()
+
+          def prop(name):
+              for el in root.iter(name):
+                  return (el.text or "").strip()
+              raise SystemExit(f"error: <{name}> not found in {os.environ['PROJECT']}")
+
+          version = prop("AssemblyVersion")
+
+          abi = None
+          for ref in root.iter("PackageReference"):
+              if ref.get("Include") == "Jellyfin.Controller":
+                  abi = (ref.get("Version") or "").strip()
+          if not abi:
+              raise SystemExit("error: no Jellyfin.Controller PackageReference found")
+          # Package versions may carry a prerelease suffix; the ABI is numeric only.
+          abi = re.match(r"[0-9]+(?:\.[0-9]+)*", abi).group(0)
+          abi = ".".join((abi.split(".") + ["0", "0", "0"])[:4])
+
+          print(f"version={version}")
+          print(f"abi={abi}")
+          PY
+
+      - name: Build
+        run: dotnet build "$PROJECT" -c Release
+
+      # Zip and hash in one step: the checksum must describe the exact bytes
+      # that get uploaded, and the server refuses the install if it does not.
+      - name: Package
+        id: package
+        run: |
+          set -euo pipefail
+          version="${{ steps.meta.outputs.version }}"
+          zip_name="Jellyfin.Plugin.BulkTags-${version}.zip"
+          zip_path="${RUNNER_TEMP}/${zip_name}"
+          dll=$(find Jellyfin.Plugin.BulkTags/bin/Release -name "$ASSEMBLY" | head -1)
+          test -n "$dll" || { echo "error: built assembly not found"; exit 1; }
+
+          # The server unpacks the download straight into the plugin directory,
+          # so the assembly must sit at the root of the archive.
+          staging="${RUNNER_TEMP}/staging"
+          mkdir -p "$staging"
+          cp "$dll" "$staging/$ASSEMBLY"
+          (cd "$staging" && zip -q -X "$zip_path" "$ASSEMBLY")
+
+          checksum=$(md5sum "$zip_path" | cut -d' ' -f1)
+          echo "zip_name=${zip_name}" >> "$GITHUB_OUTPUT"
+          echo "zip_path=${zip_path}" >> "$GITHUB_OUTPUT"
+          echo "checksum=${checksum}" >> "$GITHUB_OUTPUT"
+          echo "Packaged ${zip_name} ($(stat -c%s "$zip_path") bytes, md5 ${checksum})"
+
+      # Keep the script from the tag: an older tag may not carry a copy of it.
+      - name: Stash the manifest script
+        run: cp .github/scripts/update_manifest.py "$RUNNER_TEMP/update_manifest.py"
+
+      - name: Read the tag annotation for the changelog
+        id: notes
+        run: |
+          set -euo pipefail
+          body=$(git tag -l --format='%(contents:body)' "${{ steps.tag.outputs.tag }}" || true)
+          subject=$(git tag -l --format='%(contents:subject)' "${{ steps.tag.outputs.tag }}" || true)
+          text=$(printf '%s\n%s' "$subject" "$body" | sed '/^$/d' | tr '\n' ' ' | sed 's/ *$//')
+          {
+            echo "changelog<<EOF"
+            echo "$text"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # The manifest lives on the default branch, which is what the repository
+      # URL serves; the tag only supplies the build.
+      - name: Update the manifest on the default branch
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.event.repository.default_branch }}"
+          git checkout -B "${{ github.event.repository.default_branch }}" \
+            "origin/${{ github.event.repository.default_branch }}"
+
+          python3 "$RUNNER_TEMP/update_manifest.py" \
+            --manifest manifest.json \
+            --guid "$PLUGIN_GUID" \
+            --version "${{ steps.meta.outputs.version }}" \
+            --target-abi "${{ steps.meta.outputs.abi }}" \
+            --source-url "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ steps.tag.outputs.tag }}/${{ steps.package.outputs.zip_name }}" \
+            --checksum "${{ steps.package.outputs.checksum }}" \
+            --changelog "${{ steps.notes.outputs.changelog }}" \
+            --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          if git diff --quiet manifest.json; then
+            echo "Manifest already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "Advertise ${{ steps.meta.outputs.version }} in the repository manifest"
+          git push origin "${{ github.event.repository.default_branch }}"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.tag.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${{ steps.package.outputs.zip_path }}" --clobber
+          else
+            gh release create "$tag" "${{ steps.package.outputs.zip_path }}" \
+              --title "Jellyfin BulkTags Plugin $tag" --generate-notes
+          fi
+
+      # The failure this is guarding against is silent: the manifest points at
+      # an asset that is missing or whose bytes do not match the checksum, and
+      # the plugin only fails when a user tries to install it. Fetching what was
+      # just published, the way the server would, catches it here instead.
+      - name: Verify the published release installs
+        run: |
+          set -euo pipefail
+          url="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ steps.tag.outputs.tag }}/${{ steps.package.outputs.zip_name }}"
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL --compressed -o published.zip "$url"; then break; fi
+            echo "asset not readable yet (attempt ${attempt}), retrying"
+            sleep 5
+          done
+          test -f published.zip || { echo "error: asset never became readable at $url"; exit 1; }
+
+          actual=$(md5sum published.zip | cut -d' ' -f1)
+          expected="${{ steps.package.outputs.checksum }}"
+          if [ "$actual" != "$expected" ]; then
+            echo "error: published asset checksum $actual does not match manifest $expected"
+            exit 1
+          fi
+          unzip -l published.zip | grep -q "$ASSEMBLY" || { echo "error: $ASSEMBLY missing from archive"; exit 1; }
+          echo "Verified: $url installs with checksum $expected"
