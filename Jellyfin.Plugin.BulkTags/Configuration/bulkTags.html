@@ -377,6 +377,10 @@
                                         <input id="bulkTagsIncludeEpisodes" type="checkbox" is="emby-checkbox" />
                                         <span>Episodes</span>
                                     </label>
+                                    <label class="emby-checkbox-label">
+                                        <input id="bulkTagsIncludeCollections" type="checkbox" is="emby-checkbox" />
+                                        <span>Collections</span>
+                                    </label>
                                 </div>
                             </div>
 
@@ -531,6 +535,7 @@
                 var includeMoviesCheckbox = document.querySelector('#bulkTagsIncludeMovies');
                 var includeSeriesCheckbox = document.querySelector('#bulkTagsIncludeSeries');
                 var includeEpisodesCheckbox = document.querySelector('#bulkTagsIncludeEpisodes');
+                var includeCollectionsCheckbox = document.querySelector('#bulkTagsIncludeCollections');
                 var fieldTitleCheckbox = document.querySelector('#bulkTagsFieldTitle');
                 var fieldOverviewCheckbox = document.querySelector('#bulkTagsFieldOverview');
                 var fieldTagsCheckbox = document.querySelector('#bulkTagsFieldTags');
@@ -540,11 +545,40 @@
                 var currentMovies = [];
                 var currentSeries = [];
                 var currentEpisodes = [];
+                var currentCollections = [];
+                // Table titles are the key for both sort state and scroll targets.
+                var SECTION_IDS = {
+                    Movies: 'bulkTagsSectionMovies',
+                    Shows: 'bulkTagsSectionShows',
+                    Episodes: 'bulkTagsSectionEpisodes',
+                    Collections: 'bulkTagsSectionCollections'
+                };
                 var sortState = {
                     Movies: { key: 'dateAdded', direction: 'desc' },
                     Shows: { key: 'dateAdded', direction: 'desc' },
-                    Episodes: { key: 'dateAdded', direction: 'desc' }
+                    Episodes: { key: 'dateAdded', direction: 'desc' },
+                    Collections: { key: 'dateAdded', direction: 'desc' }
                 };
+
+                // Re-rendering in place needs the current results passed back in the
+                // same shape the server sends. Building it in one place keeps the
+                // callers from drifting apart as categories are added.
+                function currentPayload(extra) {
+                    var payload = {
+                        Movies: currentMovies,
+                        Series: currentSeries,
+                        Episodes: currentEpisodes,
+                        Collections: currentCollections
+                    };
+
+                    if (extra) {
+                        Object.keys(extra).forEach(function (key) {
+                            payload[key] = extra[key];
+                        });
+                    }
+
+                    return payload;
+                }
 
                 function authHeaders() {
                     var headers = { 'Content-Type': 'application/json' };
@@ -633,6 +667,10 @@
                     }
                     if (includeEpisodesCheckbox.checked) {
                         types.push('Episode');
+                    }
+                    if (includeCollectionsCheckbox.checked) {
+                        // Jellyfin's internal type name for a collection.
+                        types.push('BoxSet');
                     }
                     return types;
                 }
@@ -761,6 +799,7 @@
                     includeMoviesCheckbox.checked = includeTypes.indexOf('Movie') !== -1;
                     includeSeriesCheckbox.checked = includeTypes.indexOf('Series') !== -1;
                     includeEpisodesCheckbox.checked = includeTypes.indexOf('Episode') !== -1;
+                    includeCollectionsCheckbox.checked = includeTypes.indexOf('BoxSet') !== -1;
                 }
 
                 function setIncludedFields(includeFields) {
@@ -974,8 +1013,21 @@
                     if (currentEpisodes.length) {
                         links.push('<button type="button" class="bulkTagsSectionLink" data-target-id="bulkTagsSectionEpisodes">Episodes (' + currentEpisodes.length + ')</button>');
                     }
+                    if (currentCollections.length) {
+                        links.push('<button type="button" class="bulkTagsSectionLink" data-target-id="bulkTagsSectionCollections">Collections (' + currentCollections.length + ')</button>');
+                    }
 
                     sectionLinksContainer.innerHTML = links.join('');
+                }
+
+                // The server reports Jellyfin's internal type names. "BoxSet" is the
+                // only one that does not match what the UI calls it.
+                function formatItemType(type) {
+                    if (!type) {
+                        return 'Item';
+                    }
+
+                    return type === 'BoxSet' ? 'Collection' : type;
                 }
 
                 function getSortIndicator(tableTitle, key) {
@@ -1034,11 +1086,13 @@
                     options = options || {};
                     var highlightTerms = getHighlightTerms();
                     var sortedItems = getSortedItems(title, items);
-                    var sectionId = title === 'Movies'
-                        ? 'bulkTagsSectionMovies'
-                        : title === 'Shows'
-                            ? 'bulkTagsSectionShows'
-                            : 'bulkTagsSectionEpisodes';
+                    var sectionId = SECTION_IDS[title] || 'bulkTagsSectionEpisodes';
+
+                    // Every row in the Collections table is itself a collection, so the
+                    // membership column would only ever read "No collections". Drop it
+                    // and give the space to the overview.
+                    var showCollections = !options.hideCollections;
+                    var overviewWidth = showCollections ? '26%' : '44%';
 
                     return [
                         '<div id="', sectionId, '" class="bulkTagsSectionTitle">', escapeHtml(title), ' (', items.length, ')</div>',
@@ -1050,9 +1104,11 @@
                         '<th style="width: 18%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="name">Name', getSortIndicator(title, 'name'), '</button></th>',
                         '<th style="width: 11%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="type">Type', getSortIndicator(title, 'type'), '</button></th>',
                         '<th style="width: 13%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="dateAdded">Date Added', getSortIndicator(title, 'dateAdded'), '</button></th>',
-                        '<th style="width: 26%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="overview">Overview', getSortIndicator(title, 'overview'), '</button></th>',
+                        '<th style="width: ', overviewWidth, ';"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="overview">Overview', getSortIndicator(title, 'overview'), '</button></th>',
                         '<th style="width: 14%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="tags">Tags', getSortIndicator(title, 'tags'), '</button></th>',
-                        '<th style="width: 18%;"><button type="button" class="bulkTagsSortButton" data-table="', escapeHtml(title), '" data-sort-key="collections">Collections', getSortIndicator(title, 'collections'), '</button></th>',
+                        showCollections
+                            ? '<th style="width: 18%;"><button type="button" class="bulkTagsSortButton" data-table="' + escapeHtml(title) + '" data-sort-key="collections">Collections' + getSortIndicator(title, 'collections') + '</button></th>'
+                            : '',
                         '</tr>',
                         '</thead>',
                         '<tbody>',
@@ -1060,7 +1116,7 @@
                             var checked = selectedItems.has(item.Id) ? 'checked' : '';
                             var tags = item.Tags && item.Tags.length ? item.Tags : [];
                             var collections = item.Collections && item.Collections.length ? item.Collections : [];
-                            var type = item.Type || 'Item';
+                            var type = formatItemType(item.Type);
                             var overview = trimOverview(item.Overview || '');
                             var episodeContext = options.showSeriesName ? formatEpisodeContext(item) : '';
 
@@ -1076,9 +1132,11 @@
                                 '<td><div class="bulkTagsTagsCell">',
                                 tags.length ? highlightText(tags.join(', '), highlightTerms) : '<span class="bulkTagsHint">No tags</span>',
                                 '</div></td>',
-                                '<td><div class="bulkTagsTagsCell">',
-                                collections.length ? highlightText(collections.join(', '), highlightTerms) : '<span class="bulkTagsHint">No collections</span>',
-                                '</div></td>',
+                                showCollections
+                                    ? '<td><div class="bulkTagsTagsCell">'
+                                        + (collections.length ? highlightText(collections.join(', '), highlightTerms) : '<span class="bulkTagsHint">No collections</span>')
+                                        + '</div></td>'
+                                    : '',
                                 '</tr>'
                             ].join('');
                         }).join(''),
@@ -1092,7 +1150,8 @@
                     currentMovies = payload && payload.Movies ? payload.Movies : [];
                     currentSeries = payload && payload.Series ? payload.Series : [];
                     currentEpisodes = payload && payload.Episodes ? payload.Episodes : [];
-                    currentResults = currentMovies.concat(currentSeries, currentEpisodes);
+                    currentCollections = payload && payload.Collections ? payload.Collections : [];
+                    currentResults = currentMovies.concat(currentSeries, currentEpisodes, currentCollections);
 
                     if (!currentResults.length) {
                         resultsContainer.innerHTML = '';
@@ -1109,7 +1168,8 @@
                         : currentResults.length + ' result(s) found in the selected categories.';
                     resultsContainer.innerHTML = renderTable('Movies', currentMovies)
                         + renderTable('Shows', currentSeries)
-                        + renderTable('Episodes', currentEpisodes, { showSeriesName: true });
+                        + renderTable('Episodes', currentEpisodes, { showSeriesName: true })
+                        + renderTable('Collections', currentCollections, { hideCollections: true });
                 }
 
                 async function searchItems() {
@@ -1264,11 +1324,7 @@
                         }
                     });
 
-                    renderResults({
-                        Movies: currentMovies,
-                        Series: currentSeries,
-                        Episodes: currentEpisodes
-                    });
+                    renderResults(currentPayload());
                     updateSelectionSummary();
                 }
 
@@ -1307,12 +1363,7 @@
                     }
 
                     sortState[tableTitle] = state;
-                    renderResults({
-                        Movies: currentMovies,
-                        Series: currentSeries,
-                        Episodes: currentEpisodes,
-                        StatusMessage: searchStatus.textContent
-                    });
+                    renderResults(currentPayload({ StatusMessage: searchStatus.textContent }));
                 });
 
                 sectionLinksContainer.addEventListener('click', function (event) {
@@ -1372,6 +1423,7 @@
                     currentMovies = [];
                     currentSeries = [];
                     currentEpisodes = [];
+                    currentCollections = [];
                     currentResults = [];
                     resultsContainer.innerHTML = '';
                     sectionLinksContainer.innerHTML = '';
@@ -1385,20 +1437,12 @@
                 clearSelectionButton.addEventListener('click', function () {
                     selectedItems.clear();
                     updateSelectionSummary();
-                    renderResults({
-                        Movies: currentMovies,
-                        Series: currentSeries,
-                        Episodes: currentEpisodes
-                    });
+                    renderResults(currentPayload());
                 });
                 clearSelectionButtonBottom.addEventListener('click', function () {
                     selectedItems.clear();
                     updateSelectionSummary();
-                    renderResults({
-                        Movies: currentMovies,
-                        Series: currentSeries,
-                        Episodes: currentEpisodes
-                    });
+                    renderResults(currentPayload());
                 });
                 addButton.addEventListener('click', function () { runBulkAction('AddTags'); });
                 removeButton.addEventListener('click', function () { runBulkAction('RemoveTags'); });

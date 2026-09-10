@@ -8,8 +8,8 @@ instead of editing them one at a time.
 
 ## Features
 
-- **Search** movies, series and episodes by up to two terms combined with `AND` / `OR`,
-  matching against Title, Overview and Tags.
+- **Search** movies, series, episodes and collections by up to two terms combined with
+  `AND` / `OR`, matching against Title, Overview and Tags.
 - **Exclude by tag** — hide anything that already carries a given tag, which makes it easy
   to work through a backlog.
 - **Bulk add / remove tags** on any selection of results.
@@ -81,7 +81,10 @@ Tags are normalized to trimmed lowercase before being written.
 
 - The audit log and search history are stored as JSON next to the plugin assembly
   (`bulk-tags-audit-log.json`, `bulk-tags-search-history.json`).
-- Only `Movie`, `Series` and `Episode` are supported item types.
+- Supported item types are `Movie`, `Series`, `Episode` and `BoxSet`. `BoxSet` is Jellyfin's
+  internal name for a collection, and the web UI labels it **Collections**; a collection is
+  tagged as an item in its own right, which is separate from the Collections column showing
+  what a title belongs to.
 - Search combines a fast indexed query with a per-type in-memory cache that is rebuilt every
   10 minutes, and is invalidated whenever tags are written with `RefreshSearchResults` set.
 

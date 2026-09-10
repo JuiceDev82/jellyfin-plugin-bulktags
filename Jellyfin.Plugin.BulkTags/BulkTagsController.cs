@@ -105,9 +105,14 @@ namespace Jellyfin.Plugin.BulkTags
                     .Where(item => string.Equals(item.Type, "Episode", StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
+                var collections = items
+                    .Where(item => string.Equals(item.Type, "BoxSet", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
                 var suggestedTags = movies
                     .Concat(series)
                     .Concat(episodes)
+                    .Concat(collections)
                     .SelectMany(item => item.Tags)
                     .Where(tag => !string.IsNullOrWhiteSpace(tag))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -139,6 +144,7 @@ namespace Jellyfin.Plugin.BulkTags
                     Movies = movies,
                     Series = series,
                     Episodes = episodes,
+                    Collections = collections,
                     SuggestedTags = suggestedTags,
                     StatusMessage = hasSearchTerms
                         ? items.Count + " result(s) found in the selected categories."
@@ -423,15 +429,24 @@ namespace Jellyfin.Plugin.BulkTags
         {
             var timer = Stopwatch.StartNew();
             var results = new List<BulkTagsSearchItem>();
+            var typesWithIds = 0;
 
             foreach (var type in allowedTypes.OrderBy(type => type, StringComparer.OrdinalIgnoreCase))
             {
                 var itemIds = GetItemIdsForType(type).ToArray();
                 if (itemIds.Length == 0)
                 {
+                    // An empty result means either the typed query is not working on
+                    // this server or the library genuinely holds nothing of this type,
+                    // and the id count alone cannot tell those apart. Deciding per type
+                    // would strand the caller on the slow path over an empty category --
+                    // libraries with no collections at all are common -- so only treat it
+                    // as a broken query when no type returned anything.
                     _logger.LogWarning("Direct recent-items query returned no ids for type {ItemType}", type);
-                    return [];
+                    continue;
                 }
+
+                typesWithIds++;
 
                 foreach (var itemId in itemIds)
                 {
@@ -454,6 +469,11 @@ namespace Jellyfin.Plugin.BulkTags
                         _logger.LogWarning(ex, "Skipping direct recent {ItemType} item {ItemId}", type, itemId);
                     }
                 }
+            }
+
+            if (typesWithIds == 0)
+            {
+                return [];
             }
 
             _logger.LogInformation(
@@ -866,11 +886,16 @@ namespace Jellyfin.Plugin.BulkTags
             };
         }
 
+        // "BoxSet" is what Jellyfin calls a collection internally; the web UI
+        // presents it as "Collections". The search pipeline is driven off these
+        // names, so a type listed here flows through the fast query, the type
+        // caches and the recent-items path without further plumbing.
         private static readonly HashSet<string> SupportedTypes = new(StringComparer.OrdinalIgnoreCase)
         {
             "Movie",
             "Series",
-            "Episode"
+            "Episode",
+            "BoxSet"
         };
 
         private static readonly HashSet<string> SupportedFields = new(StringComparer.OrdinalIgnoreCase)
@@ -965,6 +990,13 @@ namespace Jellyfin.Plugin.BulkTags
         public List<BulkTagsSearchItem> Series { get; set; } = [];
 
         public List<BulkTagsSearchItem> Episodes { get; set; } = [];
+
+        /// <summary>
+        /// Matching collections, as BoxSet items in their own right. Not to be
+        /// confused with <see cref="BulkTagsSearchItem.Collections"/>, which is
+        /// the set of collections a given item belongs to.
+        /// </summary>
+        public List<BulkTagsSearchItem> Collections { get; set; } = [];
 
         public string[] SuggestedTags { get; set; } = [];
 
