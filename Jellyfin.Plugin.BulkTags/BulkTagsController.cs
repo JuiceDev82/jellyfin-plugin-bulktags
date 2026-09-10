@@ -22,8 +22,15 @@ namespace Jellyfin.Plugin.BulkTags
         private static readonly Dictionary<string, List<BulkTagsSearchItem>> SearchCacheByKey = new(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<string, DateTime> SearchCacheUpdatedUtcByKey = new(StringComparer.OrdinalIgnoreCase);
         private static readonly TimeSpan SearchCacheLifetime = TimeSpan.FromMinutes(10);
-        private static DateTime CollectionLookupCacheUpdatedUtc = DateTime.MinValue;
-        private static Dictionary<string, string[]> CollectionLookupCache = new(StringComparer.OrdinalIgnoreCase);
+        // Item id -> names of the collections that item belongs to, covering every
+        // item that is in one. Built in a single pass, because reading membership
+        // means walking the collections either way and the walk costs the same
+        // whether one item's membership is wanted or the whole library's. Searching
+        // by collection name needs membership known before matching rather than
+        // attached to the results afterwards, so a lazily filled per-item cache
+        // cannot serve it.
+        private static DateTime CollectionMembershipIndexUpdatedUtc = DateTime.MinValue;
+        private static Dictionary<string, string[]> CollectionMembershipIndex = new(StringComparer.OrdinalIgnoreCase);
 
         private readonly BulkTagsService _bulkTagsService;
         private readonly BulkTagsAuditLog _auditLog;
@@ -71,12 +78,18 @@ namespace Jellyfin.Plugin.BulkTags
                 {
                     var itemsById = new Dictionary<string, BulkTagsSearchItem>(StringComparer.OrdinalIgnoreCase);
 
-                    foreach (var candidate in GetFastMatches(firstTerm, secondTerm, normalizedOperator, excludedTag, allowedTypes, allowedFields, cappedLimit * 3))
+                    // Only built when a collection name can actually affect the result,
+                    // since it walks every collection in the library.
+                    var membershipIndex = allowedFields.Contains("Collections")
+                        ? GetCollectionMembershipIndex()
+                        : null;
+
+                    foreach (var candidate in GetFastMatches(firstTerm, secondTerm, normalizedOperator, excludedTag, allowedTypes, allowedFields, membershipIndex, cappedLimit * 3))
                     {
                         itemsById[candidate.Id] = candidate;
                     }
 
-                    foreach (var candidate in GetCachedMatches(firstTerm, secondTerm, normalizedOperator, excludedTag, allowedTypes, allowedFields))
+                    foreach (var candidate in GetCachedMatches(firstTerm, secondTerm, normalizedOperator, excludedTag, allowedTypes, allowedFields, membershipIndex))
                     {
                         itemsById[candidate.Id] = candidate;
                     }
@@ -351,9 +364,19 @@ namespace Jellyfin.Plugin.BulkTags
                 return true;
             }
 
-            if (allowedFields.Contains("Tags"))
+            // Each field is a separate escape hatch rather than a final return, so
+            // that an enabled-but-unmatched field does not suppress the ones after it.
+            if (allowedFields.Contains("Tags") && (item.Tags ?? []).Any(tag => Contains(tag, term)))
             {
-                return (item.Tags ?? []).Any(tag => Contains(tag, term));
+                return true;
+            }
+
+            // Matches the names of the collections the item belongs to, which is how
+            // "everything in Kids Collection" is expressed. Membership has to be
+            // resolved before this runs; see GetCollectionMembershipIndex.
+            if (allowedFields.Contains("Collections") && (item.Collections ?? []).Any(name => Contains(name, term)))
+            {
+                return true;
             }
 
             return false;
@@ -386,11 +409,14 @@ namespace Jellyfin.Plugin.BulkTags
             return (item.Tags ?? []).Any(tag => string.Equals(tag, excludedTag, StringComparison.OrdinalIgnoreCase));
         }
 
-        private IEnumerable<BulkTagsSearchItem> GetFastMatches(string? firstTerm, string? secondTerm, string searchOperator, string? excludedTag, HashSet<string> allowedTypes, HashSet<string> allowedFields, int limit)
+        private IEnumerable<BulkTagsSearchItem> GetFastMatches(string? firstTerm, string? secondTerm, string searchOperator, string? excludedTag, HashSet<string> allowedTypes, HashSet<string> allowedFields, Dictionary<string, string[]>? membershipIndex, int limit)
         {
             var results = new List<BulkTagsSearchItem>();
             var seedTerm = firstTerm ?? secondTerm;
 
+            // This path seeds Jellyfin's own title search, so it can only contribute
+            // when titles are being matched. A collection-name search is served by the
+            // cached path, which walks the items rather than querying by term.
             if (!allowedFields.Contains("Title") || string.IsNullOrWhiteSpace(seedTerm))
             {
                 return results;
@@ -415,6 +441,13 @@ namespace Jellyfin.Plugin.BulkTags
                             continue;
                         }
 
+                        if (membershipIndex is not null)
+                        {
+                            candidate.Collections = membershipIndex.TryGetValue(candidate.Id, out var collections)
+                                ? collections
+                                : [];
+                        }
+
                         if (MatchesSearch(candidate, firstTerm, secondTerm, searchOperator, allowedFields)
                             && !HasExcludedTag(candidate, excludedTag))
                         {
@@ -435,10 +468,18 @@ namespace Jellyfin.Plugin.BulkTags
             return results;
         }
 
-        private IEnumerable<BulkTagsSearchItem> GetCachedMatches(string? firstTerm, string? secondTerm, string searchOperator, string? excludedTag, HashSet<string> allowedTypes, HashSet<string> allowedFields)
+        private IEnumerable<BulkTagsSearchItem> GetCachedMatches(string? firstTerm, string? secondTerm, string searchOperator, string? excludedTag, HashSet<string> allowedTypes, HashSet<string> allowedFields, Dictionary<string, string[]>? membershipIndex)
         {
-            return GetOrBuildSearchCache(allowedTypes)
+            var candidates = GetOrBuildSearchCache(allowedTypes)
                 .Where(item => allowedTypes.Contains(item.Type))
+                .ToList();
+
+            if (membershipIndex is not null)
+            {
+                ApplyCollectionMembership(candidates, membershipIndex);
+            }
+
+            return candidates
                 .Where(item => MatchesSearch(item, firstTerm, secondTerm, searchOperator, allowedFields))
                 .Where(item => !HasExcludedTag(item, excludedTag));
         }
@@ -594,40 +635,78 @@ namespace Jellyfin.Plugin.BulkTags
 
         private void AttachCollections(IEnumerable<BulkTagsSearchItem> items)
         {
-            lock (SearchCacheLock)
+            ApplyCollectionMembership(items, GetCollectionMembershipIndex());
+        }
+
+        private static void ApplyCollectionMembership(IEnumerable<BulkTagsSearchItem> items, Dictionary<string, string[]> index)
+        {
+            foreach (var item in items)
             {
-                EnsureCollectionLookupCacheLifetime();
-
-                var targetItems = items.ToList();
-                var uncachedIds = targetItems
-                    .Select(item => item.Id)
-                    .Where(id => !CollectionLookupCache.ContainsKey(id))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                if (uncachedIds.Count > 0)
-                {
-                    PopulateCollectionLookupCache(uncachedIds);
-                }
-
-                foreach (var item in targetItems)
-                {
-                    item.Collections = CollectionLookupCache.TryGetValue(item.Id, out var collections)
-                        ? collections
-                        : [];
-                }
+                item.Collections = index.TryGetValue(item.Id, out var collections)
+                    ? collections
+                    : [];
             }
         }
 
-        private static void EnsureCollectionLookupCacheLifetime()
+        private Dictionary<string, string[]> GetCollectionMembershipIndex()
         {
-            if (DateTime.UtcNow - CollectionLookupCacheUpdatedUtc <= SearchCacheLifetime)
+            lock (SearchCacheLock)
             {
-                return;
-            }
+                if (CollectionMembershipIndexUpdatedUtc != DateTime.MinValue
+                    && DateTime.UtcNow - CollectionMembershipIndexUpdatedUtc <= SearchCacheLifetime)
+                {
+                    return CollectionMembershipIndex;
+                }
 
-            CollectionLookupCache = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-            CollectionLookupCacheUpdatedUtc = DateTime.UtcNow;
+                var timer = Stopwatch.StartNew();
+                var membership = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var itemId in GetCandidateCollectionIds())
+                {
+                    try
+                    {
+                        var item = _libraryManager.GetItemById(itemId);
+                        if (item is null || !string.Equals(item.GetType().Name, "BoxSet", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        var collectionName = item.Name;
+                        if (string.IsNullOrWhiteSpace(collectionName))
+                        {
+                            continue;
+                        }
+
+                        foreach (var memberId in GetCollectionMemberIds(item))
+                        {
+                            if (!membership.TryGetValue(memberId, out var collections))
+                            {
+                                collections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                                membership[memberId] = collections;
+                            }
+
+                            collections.Add(collectionName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Skipping collection membership scan for collection item {ItemId}", itemId);
+                    }
+                }
+
+                CollectionMembershipIndex = membership.ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value.OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray(),
+                    StringComparer.OrdinalIgnoreCase);
+                CollectionMembershipIndexUpdatedUtc = DateTime.UtcNow;
+
+                _logger.LogInformation(
+                    "Built collection membership index covering {Count} items in {ElapsedMs}ms",
+                    CollectionMembershipIndex.Count,
+                    timer.ElapsedMilliseconds);
+
+                return CollectionMembershipIndex;
+            }
         }
 
         private IEnumerable<Guid> GetCandidateItemIdsForType(string type)
@@ -677,66 +756,14 @@ namespace Jellyfin.Plugin.BulkTags
             }
         }
 
-        private void PopulateCollectionLookupCache(HashSet<string> targetIds)
-        {
-            if (targetIds.Count == 0)
-            {
-                return;
-            }
-
-            var membership = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var itemId in GetCandidateCollectionIds())
-            {
-                try
-                {
-                    var item = _libraryManager.GetItemById(itemId);
-                    if (item is null || !string.Equals(item.GetType().Name, "BoxSet", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    var collectionName = item.Name;
-                    if (string.IsNullOrWhiteSpace(collectionName))
-                    {
-                        continue;
-                    }
-
-                    foreach (var memberId in GetCollectionMemberIds(item).Where(targetIds.Contains))
-                    {
-                        if (!membership.TryGetValue(memberId, out var collections))
-                        {
-                            collections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                            membership[memberId] = collections;
-                        }
-
-                        collections.Add(collectionName);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Skipping collection membership scan for collection item {ItemId}", itemId);
-                }
-            }
-
-            foreach (var targetId in targetIds)
-            {
-                CollectionLookupCache[targetId] = membership.TryGetValue(targetId, out var collections)
-                    ? collections.OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray()
-                    : [];
-            }
-
-            CollectionLookupCacheUpdatedUtc = DateTime.UtcNow;
-        }
-
         private static void InvalidateSearchCache()
         {
             lock (SearchCacheLock)
             {
                 SearchCacheByKey.Clear();
                 SearchCacheUpdatedUtcByKey.Clear();
-                CollectionLookupCache = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-                CollectionLookupCacheUpdatedUtc = DateTime.MinValue;
+                CollectionMembershipIndex = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+                CollectionMembershipIndexUpdatedUtc = DateTime.MinValue;
             }
         }
 
@@ -937,7 +964,8 @@ namespace Jellyfin.Plugin.BulkTags
         {
             "Title",
             "Overview",
-            "Tags"
+            "Tags",
+            "Collections"
         };
 
         private static HashSet<string> ParseIncludedTypes(string? includeTypes)

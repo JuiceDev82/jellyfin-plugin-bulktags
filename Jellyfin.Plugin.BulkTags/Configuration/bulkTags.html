@@ -424,6 +424,10 @@
                                         <input id="bulkTagsFieldTags" type="checkbox" is="emby-checkbox" checked />
                                         <span>Tags</span>
                                     </label>
+                                    <label class="emby-checkbox-label" title="Match the names of the collections an item belongs to, so searching a collection name finds everything in it">
+                                        <input id="bulkTagsFieldCollections" type="checkbox" is="emby-checkbox" checked />
+                                        <span>In Collection</span>
+                                    </label>
                                 </div>
 
                                 <div class="bulkTagsRow" style="margin-top: 12px;">
@@ -565,6 +569,7 @@
                 var fieldTitleCheckbox = document.querySelector('#bulkTagsFieldTitle');
                 var fieldOverviewCheckbox = document.querySelector('#bulkTagsFieldOverview');
                 var fieldTagsCheckbox = document.querySelector('#bulkTagsFieldTags');
+                var fieldCollectionsCheckbox = document.querySelector('#bulkTagsFieldCollections');
 
                 var selectedItems = new Map();
                 var currentResults = [];
@@ -757,6 +762,9 @@
                     if (fieldOverviewCheckbox.checked) {
                         fields.push('Overview');
                     }
+                    if (fieldCollectionsCheckbox.checked) {
+                        fields.push('Collections');
+                    }
                     if (fieldTagsCheckbox.checked) {
                         fields.push('Tags');
                     }
@@ -881,12 +889,14 @@
                         fieldTitleCheckbox.checked = true;
                         fieldOverviewCheckbox.checked = true;
                         fieldTagsCheckbox.checked = true;
+                        fieldCollectionsCheckbox.checked = true;
                         return;
                     }
 
                     fieldTitleCheckbox.checked = includeFields.indexOf('Title') !== -1;
                     fieldOverviewCheckbox.checked = includeFields.indexOf('Overview') !== -1;
                     fieldTagsCheckbox.checked = includeFields.indexOf('Tags') !== -1;
+                    fieldCollectionsCheckbox.checked = includeFields.indexOf('Collections') !== -1;
                 }
 
                 function formatHistorySummary(entry) {

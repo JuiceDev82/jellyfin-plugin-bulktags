@@ -9,7 +9,10 @@ instead of editing them one at a time.
 ## Features
 
 - **Search** movies, series, episodes and collections by up to two terms combined with
-  `AND` / `OR`, matching against Title, Overview and Tags.
+  `AND` / `OR`, matching against Title, Overview, Tags and **In Collection**.
+- **Find everything in a collection** — with *In Collection* enabled, searching
+  `kids collection` returns the movies and series that belong to it, not just items whose
+  own title happens to contain those words.
 - **Exclude by tag** — hide anything that already carries a given tag, which makes it easy
   to work through a backlog.
 - **Bulk add / remove tags** on any selection of results.
@@ -87,6 +90,9 @@ Tags are normalized to trimmed lowercase before being written.
   what a title belongs to.
 - Search combines a fast indexed query with a per-type in-memory cache that is rebuilt every
   10 minutes, and is invalidated whenever tags are written with `RefreshSearchResults` set.
+- Searching *In Collection* is served only by the cache path. The fast path seeds Jellyfin's
+  own title search, which cannot find an item by the name of a collection it belongs to, so
+  the first such search after a cache expiry pays for building the type cache.
 
 ## License
 
