@@ -252,6 +252,41 @@ namespace Jellyfin.Plugin.BulkTags
             });
         }
 
+        /// <summary>
+        /// Reports the loaded assembly's own version, so the page can show which
+        /// build is actually running. Read from the assembly rather than from a
+        /// constant, because the point is to catch a stale DLL still being served,
+        /// and a hardcoded value would report whatever the source says instead.
+        /// The build time distinguishes two assemblies sharing a version number.
+        /// </summary>
+        [HttpGet("Version")]
+        public IActionResult GetVersion()
+        {
+            var assembly = typeof(BulkTagsController).Assembly;
+            var buildTimeUtc = string.Empty;
+
+            try
+            {
+                var location = assembly.Location;
+                if (!string.IsNullOrEmpty(location) && System.IO.File.Exists(location))
+                {
+                    buildTimeUtc = System.IO.File.GetLastWriteTimeUtc(location).ToString("O");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Nothing here is worth failing the request over; the version alone
+                // still identifies the build in the ordinary case.
+                _logger.LogWarning(ex, "Could not read the plugin assembly's build time");
+            }
+
+            return Ok(new BulkTagsVersionResponse
+            {
+                Version = assembly.GetName().Version?.ToString() ?? "unknown",
+                BuildTimeUtc = buildTimeUtc
+            });
+        }
+
         [HttpGet("AuditLog")]
         public IActionResult GetAuditLog()
         {
@@ -981,6 +1016,13 @@ namespace Jellyfin.Plugin.BulkTags
         public List<string> IncludeTypes { get; set; } = [];
 
         public bool IsLocked { get; set; }
+    }
+
+    public class BulkTagsVersionResponse
+    {
+        public string Version { get; set; } = string.Empty;
+
+        public string BuildTimeUtc { get; set; } = string.Empty;
     }
 
     public class BulkTagsSearchResponse

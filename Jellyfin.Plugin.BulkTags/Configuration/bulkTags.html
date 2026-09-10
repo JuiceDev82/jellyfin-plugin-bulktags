@@ -17,6 +17,28 @@
             background: linear-gradient(135deg, rgba(20, 118, 86, 0.28), rgba(16, 50, 82, 0.22));
         }
 
+        .bulkTagsPage .bulkTagsHeroHeading {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .bulkTagsPage .bulkTagsHeroHeading h2 {
+            margin: 0;
+        }
+
+        .bulkTagsPage .bulkTagsVersionBadge {
+            padding: 3px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.08);
+            font-size: 0.78em;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            opacity: 0.85;
+        }
+
         .bulkTagsPage .bulkTagsCard {
             padding: 16px;
             border-radius: 14px;
@@ -319,7 +341,10 @@
             <div class="content-primary">
                 <div class="bulkTagsLayout">
                     <div class="bulkTagsHero">
-                        <h2>Bulk Tags</h2>
+                        <div class="bulkTagsHeroHeading">
+                            <h2>Bulk Tags</h2>
+                            <span id="bulkTagsVersionBadge" class="bulkTagsVersionBadge" title="Loaded plugin build">version unknown</span>
+                        </div>
                         <p>Search by item name, overview text, or existing tags. Then select multiple results and apply one tag across all of them.</p>
                     </div>
 
@@ -536,6 +561,7 @@
                 var includeSeriesCheckbox = document.querySelector('#bulkTagsIncludeSeries');
                 var includeEpisodesCheckbox = document.querySelector('#bulkTagsIncludeEpisodes');
                 var includeCollectionsCheckbox = document.querySelector('#bulkTagsIncludeCollections');
+                var versionBadge = document.querySelector('#bulkTagsVersionBadge');
                 var fieldTitleCheckbox = document.querySelector('#bulkTagsFieldTitle');
                 var fieldOverviewCheckbox = document.querySelector('#bulkTagsFieldOverview');
                 var fieldTagsCheckbox = document.querySelector('#bulkTagsFieldTags');
@@ -634,6 +660,54 @@
                     }
 
                     return text.length > 220 ? text.slice(0, 217) + '...' : text;
+                }
+
+                // Includes the time, unlike formatDate: the badge exists to tell two
+                // builds apart, and successive builds of the same version are usually
+                // minutes apart on the same day.
+                function formatBuildTime(value) {
+                    if (!value) {
+                        return '';
+                    }
+
+                    var date = new Date(value);
+                    if (isNaN(date.getTime())) {
+                        return '';
+                    }
+
+                    return date.toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+
+                async function loadPluginVersion() {
+                    try {
+                        var response = await fetch('/BulkTags/Version', { headers: authHeaders() });
+                        if (!response.ok) {
+                            throw new Error('Version request failed.');
+                        }
+
+                        var payload = await response.json();
+                        var version = payload && payload.Version ? payload.Version : '';
+                        var built = formatBuildTime(payload && payload.BuildTimeUtc);
+
+                        if (!version) {
+                            versionBadge.textContent = 'version unknown';
+                            return;
+                        }
+
+                        versionBadge.textContent = built ? 'v' + version + ' · built ' + built : 'v' + version;
+                        versionBadge.title = 'Plugin assembly currently loaded by the server';
+                    } catch (error) {
+                        // The page still works without this; say so rather than
+                        // leaving the placeholder, which would read as a real version.
+                        versionBadge.textContent = 'version unavailable';
+                        versionBadge.title = 'Could not read the plugin version from the server';
+                    }
                 }
 
                 function formatDate(value) {
@@ -1467,6 +1541,7 @@
                     updateSelectionSummary();
                     setActionStatus('');
                     setMetadataStatus('');
+                    loadPluginVersion();
                     loadAuditLog();
                     loadSearchHistory();
                 });

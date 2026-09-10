@@ -8,9 +8,9 @@
          repository manifest offers both, and since targetAbi is only a minimum
          server version, a Jellyfin 12 server considers both entries compatible
          and picks the highest version - so this must stay above the 1.x line. -->
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.0</FileVersion>
-    <InformationalVersion>2.0.0</InformationalVersion>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <FileVersion>2.1.0.0</FileVersion>
+    <InformationalVersion>2.1.0</InformationalVersion>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
