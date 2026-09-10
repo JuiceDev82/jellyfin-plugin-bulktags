@@ -9,6 +9,14 @@
     "imageUrl": "",
     "versions": [
       {
+        "version": "2.1.0.0",
+        "changelog": "Collections can be searched and tagged Collections are now a media type in their own right, so they can be found and tagged like any other item. Searching In Collection matches the names of the collections an item belongs to, which returns the movies and series inside a named collection rather than only titles containing those words. The page header shows the plugin build the server has loaded.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/JuiceDev82/jellyfin-plugin-bulktags/releases/download/v2.1.0/Jellyfin.Plugin.BulkTags-2.1.0.0.zip",
+        "checksum": "af6d61f15ee614d485b5cb22149c256d",
+        "timestamp": "2026-09-10T16:00:39Z"
+      },
+      {
         "version": "2.0.0.0",
         "changelog": "Jellyfin 12 build. Targets net10.0 and the Jellyfin 12.0.0 assemblies. The web UI now authenticates with the standard Authorization: MediaBrowser header, and the API is restricted to administrators.",
         "targetAbi": "12.0.0.0",
