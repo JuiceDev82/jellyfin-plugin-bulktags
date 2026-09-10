@@ -9,12 +9,20 @@
     "imageUrl": "",
     "versions": [
       {
-        "version": "1.0.0.0",
-        "changelog": "Initial release. Requires Jellyfin 12.0 or later.",
+        "version": "2.0.0.0",
+        "changelog": "Jellyfin 12 build. Targets net10.0 and the Jellyfin 12.0.0 assemblies. The web UI now authenticates with the standard Authorization: MediaBrowser header, and the API is restricted to administrators.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/JuiceDev82/jellyfin-plugin-bulktags/releases/download/v12.0/Jellyfin.Plugin.BulkTags.zip",
-        "checksum": "42bb7c956ff46a39ad24480e3446e9d8",
-        "timestamp": "2026-09-10T09:39:00Z"
+        "sourceUrl": "https://github.com/JuiceDev82/jellyfin-plugin-bulktags/releases/download/v12.0/Jellyfin.Plugin.BulkTags-2.0.0.0.zip",
+        "checksum": "c8bab429e9db6d27a275bcef79b11cbf",
+        "timestamp": "2026-09-10T09:50:00Z"
+      },
+      {
+        "version": "1.0.0.0",
+        "changelog": "Jellyfin 10.11 build. Targets net9.0 and the Jellyfin 10.11.6 assemblies. Requires server 10.11.6 or later; Jellyfin 12 servers receive version 2.0.0.0 instead.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/JuiceDev82/jellyfin-plugin-bulktags/releases/download/v10.11.11/Jellyfin.Plugin.BulkTags-1.0.0.0.zip",
+        "checksum": "2ba3bfbd156ad653971cf0f2f52324ac",
+        "timestamp": "2026-09-09T16:52:28Z"
       }
     ]
   }
